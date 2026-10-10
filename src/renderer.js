@@ -89,7 +89,7 @@ function settingsPage() {
     <div class="settings-row"><div><h3>版本文件夹</h3><p>${esc(state.versionsRoot)}</p></div>${btn('打开版本文件夹','versions-folder')}</div>
     <div class="settings-row"><div><h3>缓存与恢复点</h3><p>${esc(state.cacheRoot)}<br>修改插件与跨实例同步前自动备份，失败时自动回滚。保留最近 10 次修改前的配置和插件。</p></div>${btn('打开缓存','cache-folder')}</div>
     <div class="settings-row"><div><h3>删除版本</h3><p>彻底删除程序、配置、插件和该实例的备份，释放空间。</p></div><span class="settings-value">彻底删除</span></div></div>
-    <div class="section-title"><h3>可回滚的修改 · ${points.length}</h3></div>${points.length ? `<div class="card">${points.map(p => `<div class="settings-row"><div><h3>${esc(p.label)}</h3><p>${date(p.created)} · ${p.records.map(r => esc(r.name)).join('、')} · ${p.status === 'auto-restored' ? '错误后已自动回滚' : p.status === 'restore-failed' ? '需要手动恢复' : '可恢复修改前状态'}</p></div>${btn('回滚','profile-restore',`data-point="${p.id}"`)}</div>`).join('')}</div>` : '<div class="notice">修改插件、修复依赖或同步配置后，恢复点会显示在这里。</div>'}
+    <div class="section-title"><h3>可回滚的修改 · ${points.length}</h3>${btn('检查恢复点','profile-check')}</div>${points.length ? `<div class="card">${points.map(p => `<div class="settings-row"><div><h3>${esc(p.label)}</h3><p>${date(p.created)} · ${p.records.map(r => esc(r.name)).join('、')} · ${p.backupError ? esc(p.backupError) : p.status === 'auto-restored' ? '错误后已自动回滚' : p.status === 'restore-failed' ? '需要手动恢复' : '可恢复修改前状态'}</p></div>${btn('回滚','profile-restore',`data-point="${p.id}" ${p.backupError ? 'disabled' : ''}`)}</div>`).join('')}</div>` : '<div class="notice">修改插件、修复依赖或同步配置后，恢复点会显示在这里。</div>'}
     <p class="footer-note">Aegisub Launcher · PCLAeg 0.2.1 · 各实例的程序、配置、插件保持独立。</p>`;
 }
 const dependencyStatus = value => ({ ready:'已满足', builtin:'内置 / 运行时提供', optional:'可选', missing:'缺失', conflict:'冲突', unknown:'版本未知' })[value] || value;
@@ -255,6 +255,7 @@ document.body.addEventListener('click', async e => {
       }); return;
     }
     const commands = {
+      'profile-check': ['profileCheck', {}, '恢复点检查完成'],
       select: ['select', { id }], 'change-executable': ['changeExecutable', { id }, '启动文件已更新'], remove: ['remove', { id }, '版本及全部文件已彻底删除'], folder: ['folder', { id }], 'open-instance': ['folder', { id }], 'data-folder': ['folder', {}], 'change-storage': ['changeStorage', {}, '迁移完成，正在重启…'], 'versions-folder': ['folder', { kind: 'versions' }], 'cache-folder': ['folder', { kind: 'cache' }], 'plugin-folder': ['folder', { id, plugins: true }], external: ['external', { url: b.dataset.url }],
       'plugin-scan': ['pluginScan', { id }, '原有插件已扫描'], 'plugin-install': ['pluginInstall', { id, catalogId: b.dataset.catalog }, '插件已安装到当前实例'], 'plugin-toggle': ['pluginToggle', { id, pluginId: b.dataset.plugin }, '插件状态已更新'], 'plugin-remove': ['pluginRemove', { id, pluginId: b.dataset.plugin }, '插件已移除，下次启动生效']
     };

@@ -63,7 +63,7 @@ test('data relocation preserves versions and selection, keeps backup and persist
   assert.equal(moved.state.selected, manager.state.selected);
   assert.equal(await fs.readFile(moved.appDir(moved.instance(moved.state.selected)), 'utf8'), 'fixture');
   assert.equal(await fs.readFile(manager.appDir(manager.instance(manager.state.selected)), 'utf8'), 'fixture');
-  assert.equal(JSON.parse(await fs.readFile(config)).dataRoot, next);
+  assert.equal(JSON.parse(await fs.readFile(config)).dataRoot, await fs.realpath(next));
   await assert.rejects(relocateLibrary(old, path.join(old, 'nested'), config), /内部/);
   await assert.rejects(relocateLibrary(old, next, config), /已有启动器数据/);
 });

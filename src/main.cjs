@@ -119,6 +119,7 @@ ipcMain.handle('command', async (event, command, args = {}) => {
         case 'preference': { const result = await manager.setPreference(args.key, args.value); if (args.key === 'theme') nativeTheme.themeSource = args.value; return result; }
         case 'syncPreview': return manager.previewSync(args);
         case 'syncApply': return manager.syncProfiles(args);
+        case 'profileCheck': return manager.checkRestorePoints();
         case 'profileRestore': {
           const point = manager.state.restorePoints.find(p => p.id === args.pointId); if (!point) throw new Error('恢复点不存在');
           const result = await dialog.showMessageBox(win, { type: 'warning', buttons: ['取消', '回滚配置和插件'], defaultId: 0, cancelId: 0, message: `回滚“${point.label}”？`, detail: '恢复修改前的配置和插件。回滚前也会创建恢复点，不改变 Aegisub 程序或字幕文件。' });

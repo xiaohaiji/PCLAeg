@@ -26,6 +26,8 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         run: node -e "if(process.env.GITHUB_REF_NAME !== 'v'+require('./package.json').version) throw new Error('Tag and package version differ')"
       - run: npm run build:dir
+      - name: Verify restore-point status
+        run: node tests/restore-status-ui-smoke.cjs
       - name: Verify packaged app
         run: node tests/package-smoke.cjs
       - name: Verify executable picker
