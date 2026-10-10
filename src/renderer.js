@@ -46,31 +46,38 @@ function downloadsPage() {
   if (loading) list = `<div class="card loading"><span class="spinner"></span>正在获取真实发布版本…</div>`;
   else if (releaseError) list = empty('暂时无法获取版本', esc(releaseError), btn('重新获取', 'refresh', '', 'button'));
   else if (releases) list = releases.length ? `<div class="card">${releases.map((r, i) => `<div class="version-row"><div class="version-icon">↓</div><div class="version-info"><h3>${esc(r.tag)}<span class="badge ${r.prerelease ? 'gray' : ''}">${r.prerelease ? '预发布' : '稳定版'}</span>${i === 0 ? '<span class="badge blue">最新发布</span>' : ''}</h3><p>${date(r.date)} · Windows 便携版<br>${esc(r.assets[0].name)} · ${(r.assets[0].size / 1024 ** 2).toFixed(1)} MB</p></div><div class="row-actions">${btn('发布说明 ↗', 'external', `data-url="${esc(r.url)}"`, 'text-button')}${btn('下载并安装', 'install', `data-tag="${esc(r.tag)}" data-asset="${esc(r.assets[0].name)}"`, 'primary')}</div></div>`).join('')}</div>` : empty('暂无匹配的便携版', '这个发布源最近 30 个版本中没有匹配的 Windows ZIP。可下载便携包后手动导入。');
-  return heading('下载 Aegisub', '来自项目发布页的真实版本，一键创建独立环境。', btn('添加下载分支','release-source-add','','button') + btn('安装本地 ZIP', 'import-zip', '', 'button')) +
+  return heading('下载 Aegisub', '来自项目发布页的真实版本，一键创建独立环境。', btn('管理源','go-releaseSources','','button') + btn('添加下载分支','release-source-add','','button') + btn('安装本地 ZIP', 'import-zip', '', 'button')) +
     `<div class="toolbar"><div class="chips">${Object.entries(state.sources).map(([id, info]) => btn(esc(info.name), 'source', `data-source="${id}"`, `chip ${source === id ? 'active' : ''}`)).join('')}</div>${btn('↻ 刷新', 'refresh', '', 'button small')}${state.sources[source]?.custom ? btn('移除分支', 'release-source-remove', '', 'text-button danger') : ''}</div><div class="notice">仅提供 Windows x64 便携 ZIP。下载后自动解压、配置隔离，${source === 'official' ? '适合日常字幕制作。' : '分支版本可能包含实验功能，请阅读发布说明。'}</div>${list}`;
 }
 function pluginSourcesPanel() {
   const feeds = state.pluginFeeds || [], discovered = state.discoveredFeeds || [];
-  if (!feeds.length && !discovered.length) return '';
+  if (!feeds.length && !discovered.length) return '<div class="notice">尚未订阅插件源，可添加 GitHub、DependencyControl 或 JSON 源。</div>';
   const parentName = url => [...feeds, ...(state.feedDiscoveryCache || [])].find(f => f.url === url || f.manifestUrl === url)?.name || url;
   return '<div class="section-title"><h3>插件源</h3>' + btn('发现关联源', 'plugin-feed-discover', '', 'button small') + '</div>' +
     `<div class="card feed-list">${feeds.map(f => `<div class="settings-row"><div><h3>${esc(f.name)}</h3><p>${esc(f.url)}<br>${f.packages.filter(p => p.section === 'macros').length} 个插件 · ${esc(sourceTypeLabel(f.type))}${f.moduleCount ? ' · ' + f.moduleCount + ' 个依赖模块' : ''}${f.discoveryError ? '<br>发现失败：' + esc(f.discoveryError) : ''}</p></div><div class="row-actions">${btn('刷新源', 'plugin-feed-refresh', `data-url="${esc(f.url)}" data-type="${esc(f.requestedType || 'auto')}"`)}${btn('移除源', 'plugin-feed-remove', `data-url="${esc(f.url)}"`, 'text-button danger')}</div></div>`).join('')}</div>` +
     (discovered.length ? `<div class="section-title"><h3>发现的关联源 · ${discovered.length}</h3></div><div class="card feed-list known-feed-list">${discovered.map(f => `<div class="settings-row"><div><h3>${esc(f.name)}</h3><p>${esc(f.url)}<br>来自：${f.discoveredFrom.map(url => esc(parentName(url))).join('、')}${f.error ? '<br>读取失败：' + esc(f.error) : ''}</p></div>${btn('添加源', 'plugin-feed-known-add', `data-url="${esc(f.url)}"`)}</div>`).join('')}</div>` : '') +
-    `<div class="notice">knownFeeds 中的关联源会自动列出，点击“发现关联源”可继续向下查找；点击“添加源”后才会订阅。${state.feedDiscoveryStatus?.limitReached ? '<br>本次已达到发现范围上限，添加关联源后可继续发现。' : ''}</div>`;
+    `<div class="notice">以下关联源尚未订阅。knownFeeds 中的关联源会自动列出，点击“发现关联源”可继续向下查找；点击“添加源”后才会订阅。${state.feedDiscoveryStatus?.limitReached ? '<br>本次已达到发现范围上限，添加关联源后可继续发现。' : ''}</div>`;
+}
+let pluginSourceFilter = '';
+function pluginSourcesPage() {
+  return heading('管理插件源', '', btn('返回插件中心', 'go-plugins') + btn('添加插件源', 'plugin-feed-add')) + '<div class="notice">删除源会取消订阅，保留已安装插件。已安装插件仍可单独更新。</div>' + `<div class="toolbar"><label for="source-view">查看来源</label><select id="source-view">${(state.pluginFeeds || []).map(f => `<option value="${esc(f.url)}">${esc(f.name)}</option>`).join('')}</select>${btn('查看插件','plugin-feed-view',state.pluginFeeds?.length ? '' : 'disabled')}</div>` + pluginSourcesPanel();
+}
+function releaseSourcesPage() {
+  return heading('管理下载源', '', btn('返回下载', 'go-downloads') + btn('添加下载分支', 'release-source-add')) + '<div class="notice">删除自定义下载源不会删除已安装实例。</div><div class="card feed-list">' + Object.entries(state.sources).map(([key, info]) => '<div class="settings-row"><div><h3>' + esc(info.name) + '</h3><p>' + esc(info.repo) + '</p></div><div class="row-actions">' + btn('查看版本 / 刷新', 'release-source-view', 'data-source="' + esc(key) + '"') + (info.custom ? btn('删除源', 'release-source-remove', 'data-source="' + esc(key) + '"', 'text-button danger') : '<span class="badge">内置源</span>') + '</div></div>').join('') + '</div>';
 }
 function pluginsPage() {
   const v = current();
-  if (!v) return heading('插件中心', '', btn('添加插件源', 'plugin-feed-add', '', 'button')) + pluginSourcesPanel() + empty('先选择一个 Aegisub 实例', '插件会安装到选定实例的专属目录。', btn('添加版本', 'go-downloads', '', 'primary'));
+  if (!v) return heading('插件中心', '', btn('管理源', 'go-pluginSources', '', 'button') + btn('添加插件源', 'plugin-feed-add', '', 'button')) + pluginSourcesPanel() + (pluginSourceFilter ? `<div class="plugins-grid">${state.catalog.filter(p => p.sourceUrl === pluginSourceFilter || p.feedUrl === pluginSourceFilter).map(p => `<div class="card plugin-card"><h3>${esc(p.name)}</h3><p>${esc(p.description)}</p></div>`).join('')}</div>` : '') + empty('先选择一个 Aegisub 实例', '插件会安装到选定实例的专属目录。', btn('添加版本', 'go-downloads', '', 'primary'));
   if (pluginTab === 'dependencies') return dependenciesPage(v);
   const search = query.trim().toLowerCase().split(/\s+/).filter(Boolean), installed = pluginTab === 'installed' || pluginTab === 'modules';
-  const plugins = (installed ? v.plugins.filter(p => pluginTab === 'modules' ? p.kind === 'include' : p.kind !== 'include') : state.catalog).filter(p => { const text = `${p.name} ${p.file || ''} ${p.relativePath || ''} ${p.author || ''} ${p.description || ''} ${p.category || ''}`.toLowerCase(); return search.every(word => text.includes(word)); });
+  const plugins = (installed ? v.plugins.filter(p => pluginTab === 'modules' ? p.kind === 'include' : p.kind !== 'include') : state.catalog).filter(p => { const text = `${p.name} ${p.file || ''} ${p.relativePath || ''} ${p.author || ''} ${p.description || ''} ${p.category || ''}`.toLowerCase(); return (installed || !pluginSourceFilter || p.sourceUrl === pluginSourceFilter || p.feedUrl === pluginSourceFilter) && search.every(word => text.includes(word)); });
   const cards = plugins.map(p => {
     const local = installed ? p : v.plugins.find(x => x.catalogId === p.id || (x.kind === 'autoload' && x.file.toLowerCase() === p.file.toLowerCase()));
     return `<div class="card plugin-card"><div class="plugin-top"><div class="plugin-icon">${installed ? '◇' : ({ '特效': '✧', '排版': '≡', '检查': '✓', '时间轴': '◷', '编辑': 'Aa' }[p.category] || '◇')}</div><div><h3>${esc(p.name)}</h3><small>${installed ? `${esc(p.version)} · ${p.kind === 'include' ? '依赖模块' : '自动加载脚本'}` : `${esc(p.author)} · Automation 4`}</small></div></div><p>${installed ? `${esc(p.relativePath || p.file)}<br>${p.imported && !p.installed ? '导入版本自带' : '安装于 ' + date(p.installed)}${p.depctrl ? ' · DependencyControl' : p.url ? ' · 在线来源' : ' · 本地导入'}` : esc(p.description)}</p><div class="plugin-footer"><span class="category">${installed ? (p.enabled ? '已启用' : '已禁用') : esc(p.category)}</span><div class="row-actions">${installed ? `${btn(p.enabled ? '禁用' : '启用', 'plugin-toggle', `data-plugin="${p.id}"`)}${p.url || p.depctrl ? btn('更新', 'plugin-update', `data-plugin="${p.id}"`) : ''}${btn('移除', 'plugin-remove', `data-plugin="${p.id}"`, 'text-button danger')}` : `${local ? `<span class="badge blue">已安装</span>${btn(local.enabled ? '禁用' : '启用', 'plugin-toggle', `data-plugin="${local.id}"`)}${btn('移除', 'plugin-remove', `data-plugin="${local.id}"`, 'text-button danger')}` : btn('安装到此实例', 'plugin-install', `data-catalog="${p.id}"`)}${p.homepage ? btn('↗', 'external', `data-url="${esc(p.homepage)}"`, 'text-button') : ''}`}</div></div></div>`;
   }).join('');
-  return heading('插件中心', '', btn('依赖关系', 'dependency-view', '', 'button') + btn('重新扫描', 'plugin-scan', '', 'button') + btn('导入脚本', 'plugin-import', '', 'button') + btn('从链接安装', 'plugin-url', '', 'button') + btn('添加插件源', 'plugin-feed-add', '', 'button')) +
+  return heading('插件中心', '', btn('依赖关系', 'dependency-view', '', 'button') + btn('重新扫描', 'plugin-scan', '', 'button') + btn('导入脚本', 'plugin-import', '', 'button') + btn('从链接安装', 'plugin-url', '', 'button') + btn('管理源', 'go-pluginSources', '', 'button') + btn('添加插件源', 'plugin-feed-add', '', 'button')) +
     `<div class="notice"><strong>安装目标：${esc(v.name)}</strong>　${esc(v.version)} · 当前操作仅影响这个实例${state.running.includes(v.id) ? '<br>此实例正在运行。关闭 Aegisub 后才能修改插件。' : ''}</div><div class="toolbar"><div class="chips">${btn(`发现插件 · ${state.catalog.length}`, 'plugin-tab', 'data-tab="browse"', `chip ${!installed ? 'active' : ''}`)}${btn(`已安装 · ${v.plugins.filter(p => p.kind !== 'include').length}`, 'plugin-tab', 'data-tab="installed"', `chip ${pluginTab === 'installed' ? 'active' : ''}`)}${btn(`依赖模块 · ${v.plugins.filter(p => p.kind === 'include').length}`, 'plugin-tab', 'data-tab="modules"', `chip ${pluginTab === 'modules' ? 'active' : ''}`)}</div>${btn('打开插件目录', 'plugin-folder', '', 'text-button')}</div><div class="plugin-search-row"><label for="plugin-search">搜索插件</label><input class="search" id="plugin-search" placeholder="名称、文件名、作者或说明" aria-label="搜索插件" value="${esc(query)}">${btn('搜索', 'plugin-search-submit', '', 'button')}${query ? btn('清空', 'plugin-search-clear', '', 'text-button') : ''}<span class="search-count">${query ? '找到' : '共'} ${plugins.length} 项</span></div>` +
-    pluginSourcesPanel() + (cards ? `<div class="plugins-grid">${cards}</div>` : empty(installed ? '这个实例还没有匹配的插件' : '没有找到匹配的插件', '试试其他关键词，或导入自己的脚本。')) +
+    (pluginSourceFilter && !installed ? `<div class="notice">来源：${esc((state.pluginFeeds || []).find(f => f.url === pluginSourceFilter)?.name || pluginSourceFilter)} ${btn('显示全部来源', 'plugin-feed-filter-clear')}</div>` : '') + pluginSourcesPanel() + (cards ? `<div class="plugins-grid">${cards}</div>` : empty(installed ? '这个实例还没有匹配的插件' : '没有找到匹配的插件', '试试其他关键词，或导入自己的脚本。')) +
     `<p class="compat">${installed ? '已扫描当前实例原有的 Lua / MoonScript 脚本。一个脚本可以注册多个菜单功能，因此脚本数量与 Aegisub 菜单项数量可能不同。修改文件后可重新扫描。' : '本地可用脚本与在线脚本统一列出。安装本地脚本时会补齐缺少的依赖，保留目标版本已有模块；实际兼容性需在 Aegisub 中确认。'}<br>外部脚本的第三方依赖需另外安装，可在导入时选择“依赖模块”。</p>`;
 }
 function localVersionsPanel() {
@@ -118,8 +125,8 @@ function render() {
   $('#side-count').textContent = `${v?.plugins.filter(p => p.kind !== 'include').length || 0} 个插件`;
   $('#instance-select').innerHTML = state.instances.length ? state.instances.map(v => `<option value="${v.id}" ${v.id === state.selected ? 'selected' : ''}>${esc(v.name)} · ${esc(v.version)}</option>`).join('') : '<option value="">选择版本实例</option>';
   $('#launch').disabled = !v || busy || state.running.includes(v.id); $('#launch span').textContent = v && state.running.includes(v.id) ? 'Aegisub 运行中' : '启动 Aegisub'; $('#instance-select').disabled = busy;
-  document.querySelectorAll('nav button').forEach(b => b.classList.toggle('active', b.dataset.page === page));
-  $('#content').innerHTML = ({ home: homePage, versions: versionsPage, downloads: downloadsPage, plugins: pluginsPage, settings: settingsPage })[page]();
+  document.querySelectorAll('nav button').forEach(b => b.classList.toggle('active', b.dataset.page === ({ pluginSources: 'plugins', releaseSources: 'downloads' }[page] || page)));
+  $('#content').innerHTML = ({ home: homePage, versions: versionsPage, downloads: downloadsPage, plugins: pluginsPage, pluginSources: pluginSourcesPage, releaseSources: releaseSourcesPage, settings: settingsPage })[page]();
   if (busy) $('#content').querySelectorAll('button').forEach(b => b.disabled = true);
 }
 function navigate(next) { page = next; query = ''; render(); $('#content').scrollTop = 0; if (page === 'downloads' && !releases && !loading) fetchReleases(); }
@@ -187,7 +194,10 @@ document.body.addEventListener('click', async e => {
       const answer = await promptModal('添加 Aegisub 下载分支','填写 GitHub 仓库或 Releases 页地址，自动读取它的 Windows 便携 ZIP 发布。','',{url:true,release:true});
       if(answer) await task(async()=>{const result=await command('releaseSourceAdd',{url:answer.value},'分支已添加');source=result.addedSource;releases=null;await fetchReleases();});return;
     }
-    if (action === 'release-source-remove') { await task(async()=>{await command('releaseSourceRemove',{source});source='official';releases=null;await fetchReleases();});return; }
+    if (action === 'release-source-remove') { const removed = b.dataset.source || source; await task(async()=>{await command('releaseSourceRemove',{source:removed});if(source===removed){source='official';releases=null;}if(page==='downloads')await fetchReleases();});return; }
+    if (action === 'release-source-view') { source=b.dataset.source; releases=null; navigate('downloads'); return; }
+    if (action === 'plugin-feed-view') { pluginSourceFilter=b.dataset.url || $('#source-view').value; pluginTab='browse'; navigate('plugins'); return; }
+    if (action === 'plugin-feed-filter-clear') { pluginSourceFilter=''; render(); return; }
     if (action === 'ass-register' || action === 'ass-settings') { await task(()=>command(action === 'ass-register' ? 'assRegister' : 'assSettings',{},action === 'ass-register' ? '已注册，请在 Windows 默认应用中选择 Aegisub Launcher' : undefined));return; }
     if (action === 'profile-restore') { await task(()=>command('profileRestore',{pointId:b.dataset.point},'已回滚配置和插件'));return; }
     if (action === 'profile-sync') {
@@ -227,7 +237,7 @@ document.body.addEventListener('click', async e => {
     }
     if (action === 'plugin-feed-add') {
       const answer = await promptModal('添加插件源', '支持 GitHub 仓库、目录和 Gist，DependencyControl 订阅，JSON 插件列表，以及 .lua / .moon 脚本链接。添加后可在发现插件中选择安装。', '', { url: true, feed: true });
-      if (answer) { pluginTab = 'browse'; query = ''; await task(() => command('pluginFeedAdd', { url: answer.value, type: answer.sourceType }, '插件源已添加')); } return;
+      if (answer) { pluginTab = 'browse'; pluginSourceFilter = ''; query = ''; await task(() => command('pluginFeedAdd', { url: answer.value, type: answer.sourceType }, '插件源已添加')); } return;
     }
     if (action === 'plugin-feed-discover') {
       await task(() => command('pluginFeedDiscover', {}, '关联源发现完成')); return;
@@ -237,6 +247,7 @@ document.body.addEventListener('click', async e => {
       await task(() => command('pluginFeedAdd', { url: b.dataset.url, type: 'auto' }, '关联源已添加')); return;
     }
     if (action === 'plugin-feed-refresh' || action === 'plugin-feed-remove') {
+      if (action === 'plugin-feed-remove' && pluginSourceFilter === b.dataset.url) pluginSourceFilter = '';
       await task(() => command(action === 'plugin-feed-refresh' ? 'pluginFeedAdd' : 'pluginFeedRemove', { url: b.dataset.url, type: b.dataset.type || 'auto' }, action === 'plugin-feed-refresh' ? '插件源已刷新' : '已移除源，已安装的插件保留')); return;
     }
     if (action === 'plugin-url') {
@@ -248,11 +259,7 @@ document.body.addEventListener('click', async e => {
       if (answer) await task(() => command('pluginImport', { id, kind: answer.kind }, '脚本已导入当前实例')); return;
     }
     if (action === 'plugin-update') {
-      const p = current().plugins.find(p => p.id === b.dataset.plugin);
-      await task(async () => {
-        if (p.feedUrl) await command('pluginFeedAdd', { url: p.sourceUrl || p.feedUrl, type: p.feedType || 'auto' });
-        await command('pluginInstall', { id, catalogId: p.catalogId, url: p.url, kind: p.kind }, '已获取源文件的最新内容');
-      }); return;
+      await task(() => command('pluginUpdate', { id, pluginId: b.dataset.plugin }, '插件已更新，源订阅保持不变')); return;
     }
     const commands = {
       select: ['select', { id }], 'change-executable': ['changeExecutable', { id }, '启动文件已更新'], remove: ['remove', { id }, '版本及全部文件已彻底删除'], folder: ['folder', { id }], 'open-instance': ['folder', { id }], 'data-folder': ['folder', {}], 'change-storage': ['changeStorage', {}, '迁移完成，正在重启…'], 'versions-folder': ['folder', { kind: 'versions' }], 'cache-folder': ['folder', { kind: 'cache' }], 'plugin-folder': ['folder', { id, plugins: true }], external: ['external', { url: b.dataset.url }],

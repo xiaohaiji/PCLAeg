@@ -406,9 +406,26 @@ class Manager {
     v.lastLaunch = new Date().toISOString(); await this.save(); return this.snapshot();
   }
   async addPlugin(id, { catalogId, file, url, kind = 'autoload' }) {
-    this.ensureStopped(id); const v = this.instance(id);
     const entry = catalogId ? this.catalog().find(p => p.id === catalogId) : null;
     if (catalogId && !entry) throw new Error('插件不存在');
+    return this.installPluginEntry(id, { file, url, kind }, entry);
+  }
+  async updatePlugin(id, pluginId) {
+    this.ensureStopped(id);
+    const plugin = this.instance(id).plugins.find(p => p.id === pluginId);
+    if (!plugin) throw new Error('插件不存在');
+    if (!plugin.enabled) throw new Error('该插件已禁用，请先启用后再更新');
+    if (plugin.feedUrl) {
+      const feed = await this.readPluginSource(plugin.sourceUrl || plugin.feedUrl, plugin.feedType || 'auto');
+      const entry = feed.packages.find(p => p.section === 'macros' && (plugin.depctrl ? p.depctrl && p.namespace === plugin.namespace : p.id === plugin.catalogId));
+      if (!entry) throw new Error('源中已没有此插件，请刷新源并检查发布情况');
+      return this.installPluginEntry(id, { kind: plugin.kind }, entry);
+    }
+    if (!plugin.url) throw new Error('此插件没有可更新的在线来源');
+    return this.installPluginEntry(id, { url: plugin.url, kind: plugin.kind }, { id: plugin.catalogId, file: plugin.file, name: plugin.name, url: plugin.url });
+  }
+  async installPluginEntry(id, { file, url, kind = 'autoload' }, entry) {
+    this.ensureStopped(id); const v = this.instance(id);
     if (entry?.depctrl) return this.installFeedPlugin(id, entry);
     if (entry?.sourceInstanceId || entry?.bundled) return this.installLocalPlugin(id, entry);
     const filename = scriptName(entry?.file || (file ? path.basename(file) : decodeURIComponent(path.basename(new URL(url).pathname))));
@@ -417,7 +434,7 @@ class Manager {
     if (entry?.sourcePlugin && old && old.catalogId !== entry.id) throw new Error('当前版本已有同名脚本，请先卸载后再从此源安装');
     if (old && !old.enabled) throw new Error('该插件已禁用，请先启用后再更新');
     const plugin = { ...old, id: old?.id || crypto.randomUUID(), name: entry?.name || filename, file: filename, enabled: true, kind: old?.kind || kind, catalogId: entry?.id || null, url: entry?.url || url || null, installed: new Date().toISOString() };
-    if (entry?.sourcePlugin) Object.assign(plugin, { feedUrl: entry.feedUrl, feedType: (this.state.pluginFeeds || []).find(f => f.url === entry.feedUrl)?.requestedType || entry.feedType, sourcePlugin: true });
+    if (entry?.sourcePlugin) Object.assign(plugin, { feedUrl: entry.feedUrl, sourceUrl: entry.sourceUrl || entry.feedUrl, feedType: entry.feedType || 'auto', sourcePlugin: true });
     const dest = this.pluginPath(v, plugin);
     if (!old && await exists(dest)) throw new Error('已有同名文件，请先在插件目录中处理');
     const temp = dest + '.' + crypto.randomUUID() + '.tmp';

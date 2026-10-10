@@ -28,6 +28,8 @@ jobs:
       - run: npm run build:dir
       - name: Verify packaged app
         run: node tests/package-smoke.cjs
+      - name: Verify source management
+        run: node tests/source-management-ui-smoke.cjs
       - name: Verify executable picker
         run: node tests/executable-selection-ui-smoke.cjs
       - name: Verify update UI and dark theme

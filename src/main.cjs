@@ -150,6 +150,7 @@ ipcMain.handle('command', async (event, command, args = {}) => {
           return result.response === 1 ? manager.remove(args.id) : null;
         }
         case 'pluginInstall': return manager.addPlugin(args.id, args);
+        case 'pluginUpdate': return manager.updatePlugin(args.id, args.pluginId);
         case 'pluginFeedAdd': return manager.addPluginFeed(args.url, args.type || 'auto');
         case 'pluginFeedRemove': return manager.removePluginFeed(args.url);
         case 'pluginFeedDiscover': return manager.discoverPluginFeeds();
