@@ -1,5 +1,5 @@
 let dependencyView = null, dependencyOwner = '';
-let launcherUpdate = null;
+let launcherUpdate = null, assState = null;
 let state = { instances: [], catalog: [], sources: {}, running: [] }, page = 'home', source = 'official', pluginTab = 'installed', query = '', releases = null, releaseError = '', loading = false, busy = false, toastTimer, modalResolve, pluginComposing = false;
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -12,7 +12,9 @@ async function command(name, args = {}, message) {
   const result = await window.launcher.command(name, args);
   if (!result.ok) throw new Error(result.error);
   if (result.data?.instances) { state = { ...state, ...result.data }; render(); }
-  if (message && result.data) toast(message);
+  if (result.data?.defaultAssReset) toast('默认打开实例已删除，现已跟随当前选择的实例');
+  else if (message && result.data) toast(message);
+  if (name === 'assRegister' || name === 'assSettings') await refreshAssStatus();
   return result.data;
 }
 async function task(fn) {
@@ -25,7 +27,7 @@ function heading(title, sub, actions = '') { return `<div class="page-heading"><
 function empty(title, text, actions = '') { return `<div class="card empty"><div class="empty-symbol">◇</div><h3>${title}</h3><p>${text}</p>${actions}</div>`; }
 function versionRow(v, compact = false) {
   const selected = state.selected === v.id, running = state.running.includes(v.id);
-  return `<div class="version-row"><div class="version-icon">A</div><div class="version-info"><h3>${esc(v.name)}${selected ? '<span class="badge blue">当前实例</span>' : ''}${running ? '<span class="badge">运行中</span>' : ''}</h3><p>${esc(v.version)} · ${esc(state.sources[v.source]?.name || '本地导入')} · ${v.plugins.filter(p => p.kind !== 'include').length} 个插件<br>启动文件：${esc(v.exe)}<br>上次启动：${date(v.lastLaunch)}</p></div><div class="row-actions">${btn(selected ? '已选择' : '选择', 'select', `data-id="${v.id}" ${selected ? 'disabled' : ''}`)}${compact ? btn('管理插件', 'manage-plugins', `data-id="${v.id}"`) + btn('删除版本', 'remove', `data-id="${v.id}" ${running ? 'disabled' : ''}`, 'button small danger') : `${btn('插件', 'manage-plugins', `data-id="${v.id}"`)}${btn('目录', 'folder', `data-id="${v.id}"`)}${btn('启动文件', 'change-executable', `data-id="${v.id}"`)}${btn('重命名', 'rename', `data-id="${v.id}"`, 'text-button')}${btn('克隆', 'clone', `data-id="${v.id}"`, 'text-button')}${btn('同步', 'profile-sync', `data-id="${v.id}"`, 'text-button')}${btn('删除版本', 'remove', `data-id="${v.id}" ${running ? 'disabled' : ''}`, 'button small danger')}`}</div></div>`;
+  return `<div class="version-row"><div class="version-icon">A</div><div class="version-info"><h3>${esc(v.name)}${selected ? '<span class="badge blue">当前实例</span>' : ''}${running ? '<span class="badge">运行中</span>' : ''}${state.preferences?.defaultAss === v.id ? '<span class="badge blue">默认打开字幕</span>' : ''}</h3><p>${esc(v.version)} · ${esc(state.sources[v.source]?.name || '本地导入')} · ${v.plugins.filter(p => p.kind !== 'include').length} 个插件<br>启动文件：${esc(v.exe)}<br>上次启动：${date(v.lastLaunch)}</p></div><div class="row-actions">${btn(selected ? '已选择' : '选择', 'select', `data-id="${v.id}" ${selected ? 'disabled' : ''}`)}${compact ? btn('管理插件', 'manage-plugins', `data-id="${v.id}"`) + btn('删除版本', 'remove', `data-id="${v.id}" ${running ? 'disabled' : ''}`, 'button small danger') : `${btn('设为默认打开实例', 'ass-default', `data-id="${v.id}" ${state.preferences?.defaultAss === v.id ? 'disabled' : ''}`)}${btn('插件', 'manage-plugins', `data-id="${v.id}"`)}${btn('目录', 'folder', `data-id="${v.id}"`)}${btn('启动文件', 'change-executable', `data-id="${v.id}"`)}${btn('重命名', 'rename', `data-id="${v.id}"`, 'text-button')}${btn('克隆', 'clone', `data-id="${v.id}"`, 'text-button')}${btn('同步', 'profile-sync', `data-id="${v.id}"`, 'text-button')}${btn('删除版本', 'remove', `data-id="${v.id}" ${running ? 'disabled' : ''}`, 'button small danger')}`}</div></div>`;
 }
 function homePage() {
   const v = current(), totalPlugins = state.instances.reduce((n, v) => n + v.plugins.filter(p => p.kind !== 'include').length, 0);
@@ -77,13 +79,23 @@ function localVersionsPanel() {
   return '<div class="section-title"><h3>本机已有的 Aegisub</h3><div class="row-actions">' + btn('重新扫描', 'scan-local') + btn('扫描指定目录', 'scan-directory') + '</div></div>' +
     (state.localVersions?.length ? `<div class="card">${state.localVersions.map(v => `<div class="version-row"><div class="version-info"><h3>${esc(v.name)}${v.imported ? '<span class="badge">已导入</span>' : ''}</h3><p>${esc(v.version || '版本未知')}<br>${esc(v.file)}${v.possibleDuplicate && !v.imported ? '<br>已管理的实例中有相同版本，可按需再导入。' : ''}</p></div>${btn('导入此版本', 'import-detected', `data-token="${v.token}" ${v.imported ? 'disabled' : ''}`)}</div>`).join('')}</div>` : '<div class="notice">启动时自动扫描安装记录、常用目录和运行中的程序。找到后可选择导入；文件复制到独立实例，原目录保留。扫描指定目录也支持便携版。</div>') + (state.localScan?.truncated ? '<p class="footer-note">扫描达到范围上限，可选择指定目录继续查找。</p>' : '');
 }
+async function refreshAssStatus() {
+  assState = await command('assStatus');
+  if (page === 'settings') render();
+}
+function assStatusText() {
+  if (!assState) return '正在查询系统关联…';
+  const registration = { valid: '启动器注册有效', missing: '尚未注册启动器', stale: '启动器注册路径已失效，请重新注册', unknown: '启动器注册状态未知' }[assState.registration];
+  return esc(registration) + '<br>' + assState.extensions.map(item => esc(item.extension) + '：' + esc({ launcher: '已关联到此启动器', other: '当前由其他应用打开', stale: '关联的启动器路径已失效', unknown: '关联状态未知' }[item.status])).join('<br>');
+}
 function settingsPage() {
   const prefs = state.preferences || {}, points = state.restorePoints || [];
+  const defaultTarget = state.instances.find(v => v.id === (prefs.defaultAss || state.selected));
   const choices = '<option value="">跟随当前选择的实例</option>' + state.instances.map(v => `<option value="${v.id}" ${prefs.defaultAss === v.id ? 'selected' : ''}>${esc(v.name)}</option>`).join('');
   return heading('设置', '', btn('跨实例同步', 'profile-sync', '', 'button')) +
     `<div class="card"><div class="settings-row"><div><h3>启动器更新 · ${esc(state.launcherVersion || '0.2.1')}</h3><p>${launcherUpdate ? (launcherUpdate.available ? `发现新版 ${esc(launcherUpdate.version)}，更新后自动重启，保留实例与插件。` : '当前已经是最新稳定版。') : '从官方 GitHub 发布页检查稳定更新。'}${state.updateSupported === false ? '<br>开发模式或单文件版请手动下载目录 ZIP。' : ''}${state.updateResult ? `<br>上次更新：${esc(state.updateResult.version)} · ${{installed:'已完成', 'rolled-back':'失败后已恢复旧程序','restore-failed':'恢复失败，请从缓存中的程序备份恢复'}[state.updateResult.status]}${state.updateResult.error ? '<br>' + esc(state.updateResult.error) : ''}` : ''}</p></div><div class="row-actions">${btn('检查更新','launcher-update-check')}${launcherUpdate?.available ? btn('一键更新','launcher-update-install',state.updateSupported === false ? 'disabled' : '', 'primary') : ''}${btn('发布说明','external','data-url="https://github.com/xiaohaiji/PCLAeg/releases"')}</div></div></div>` +
     `<div class="card"><div class="settings-row"><div><h3>外观</h3><p>浅色、深色或跟随系统。</p></div><div class="chips">${[['system','跟随系统'],['light','浅色'],['dark','深色']].map(([id,name]) => btn(name,'theme',`data-theme="${id}"`,`chip ${prefs.theme === id ? 'active' : ''}`)).join('')}</div></div>
-    <div class="settings-row"><div><h3>ASS / SSA 默认打开实例</h3><p>通过启动器打开字幕时使用此实例。首次关联请注册，再在 Windows 默认应用中选择 Aegisub Launcher。</p></div><div class="settings-controls"><select id="ass-instance" aria-label="ASS 默认实例">${choices}</select><div class="row-actions">${btn('注册 ASS 打开方式','ass-register')}${btn('打开 Windows 默认应用','ass-settings')}</div></div></div>
+    <div class="settings-row"><div><h3>ASS / SSA 默认打开实例</h3><p>当前目标：${esc(defaultTarget?.name || '尚未选择实例')}（${prefs.defaultAss ? '固定实例' : '跟随当前选择'}）。首次关联请注册，再在 Windows 中选择 Aegisub Launcher。<br>${assStatusText()}</p></div><div class="settings-controls"><select id="ass-instance" aria-label="ASS 默认实例">${choices}</select><div class="row-actions">${btn('注册 ASS 打开方式','ass-register')}${btn('选择默认应用','ass-settings')}${btn('打开 Windows 默认应用','ass-settings-general')}${btn('刷新关联状态','ass-status')}</div></div></div>
     <div class="settings-row"><div><h3>启动时扫描本机 Aegisub</h3><p>检测已有程序，导入前由你选择。</p></div><label><input type="checkbox" id="auto-scan" ${prefs.autoScan !== false ? 'checked' : ''}> 自动扫描</label></div>
     <div class="settings-row"><div><h3>数据目录</h3><p>${esc(state.root)}</p></div><div class="row-actions">${btn('更改位置','change-storage')}${btn('打开目录','data-folder')}</div></div>
     <div class="settings-row"><div><h3>版本文件夹</h3><p>${esc(state.versionsRoot)}</p></div>${btn('打开版本文件夹','versions-folder')}</div>
@@ -122,7 +134,7 @@ function render() {
   $('#content').innerHTML = ({ home: homePage, versions: versionsPage, downloads: downloadsPage, plugins: pluginsPage, settings: settingsPage })[page]();
   if (busy) $('#content').querySelectorAll('button').forEach(b => b.disabled = true);
 }
-function navigate(next) { page = next; query = ''; render(); $('#content').scrollTop = 0; if (page === 'downloads' && !releases && !loading) fetchReleases(); }
+function navigate(next) { page = next; query = ''; render(); $('#content').scrollTop = 0; if (page === 'downloads' && !releases && !loading) fetchReleases(); if (page === 'settings') refreshAssStatus().catch(e => toast(e.message, true)); }
 async function fetchReleases() {
   loading = true; releaseError = ''; render(); const requestedSource = source;
   try { const result = await command('releases', { source: requestedSource }); if (source === requestedSource) releases = result; }
@@ -177,6 +189,9 @@ document.body.addEventListener('click', async e => {
     if (action === 'launcher-update-check') { await task(async () => { launcherUpdate = await command('updateCheck'); toast(launcherUpdate.available ? `发现新版 ${launcherUpdate.version}` : '当前已经是最新版本'); }); return; }
     if (action === 'launcher-update-install') { await task(() => command('updateInstall',{},'更新已准备完成，正在重启…')); return; }
     if (action === 'theme') { await task(() => command('preference',{key:'theme',value:b.dataset.theme})); return; }
+    if (action === 'ass-default') { await task(() => command('preference', {key:'defaultAss',value:id}, '默认打开实例已保存；首次使用请在设置中完成系统关联')); return; }
+    if (action === 'ass-status') { await refreshAssStatus(); return; }
+    if (action === 'ass-settings-general') { await task(() => command('assSettings', {general:true})); return; }
     if (action === 'scan-local' || action === 'scan-directory') { await task(() => command(action === 'scan-local' ? 'scanLocal' : 'scanDirectory',{},'扫描完成')); return; }
     if (action === 'import-detected') {
       const candidate = state.localVersions.find(v=>v.token===b.dataset.token);
@@ -276,3 +291,5 @@ document.body.addEventListener('change',e=>{
   if(e.target.id==='sync-source')$('#modal-extra').querySelectorAll('[data-field="targetIds"]').forEach(el=>{el.disabled=el.value===e.target.value||state.running.includes(el.value);if(el.disabled)el.checked=false;});
 });
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>render());
+
+window.addEventListener('focus', () => { if (page === 'settings') refreshAssStatus().catch(e => toast(e.message, true)); });

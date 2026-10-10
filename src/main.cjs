@@ -5,14 +5,12 @@ const { Manager } = require('./core.cjs');
 const { resolveStorage, configureStorage, migrateLibrary, relocateLibrary } = require('./storage.cjs');
 const { registerAssociation } = require('./platform.cjs');
 const { Updater } = require('./updater.cjs');
+const { readAssociationStatus, openDefaultSettings, subtitleArguments, SubtitleQueue } = require('./ass-integration.cjs');
 let win, manager, updater, pendingImport;
-let pendingSubtitleFiles = process.argv.filter(arg => /\.(ass|ssa)$/i.test(arg)).map(file => path.resolve(file));
-async function openSubtitles(files) {
-  if (!files.length) return;
-  if (!manager || !win) { pendingSubtitleFiles.push(...files); return; }
-  try { const id = manager.state.preferences.defaultAss || manager.state.selected; if (!id) throw new Error('请先导入 Aegisub，并在设置中选择 ASS 默认实例'); await manager.launch(id, files); win.webContents.send('progress', { stateChanged: true }); }
-  catch (error) { dialog.showErrorBox('字幕打开失败', error.message); }
-}
+const subtitles = new SubtitleQueue(error => dialog.showErrorBox('字幕打开失败', error.message));
+subtitles.enqueue(subtitleArguments(process.argv));
+const associationExecutable = () => process.env.PORTABLE_EXECUTABLE_FILE || app.getPath('exe');
+const associationPrefix = () => app.isPackaged ? [] : [path.join(__dirname, '..')];
 const legacyRoots = ['aegisub-launcher', 'Aegisub Launcher', 'Electron'].map(name => path.join(app.getPath('appData'), name, 'library'));
 let storage;
 try {
@@ -26,7 +24,7 @@ const gotLock = app.requestSingleInstanceLock();
 app.setName('aegisub-launcher');
 if (!gotLock) app.quit();
 else {
-  app.on('second-instance', (_event, argv) => { if (win) { if (win.isMinimized()) win.restore(); win.show(); win.focus(); } openSubtitles(argv.filter(arg => /\.(ass|ssa)$/i.test(arg)).map(file => path.resolve(file))); });
+  app.on('second-instance', (_event, argv, workingDirectory) => { if (win) { if (win.isMinimized()) win.restore(); win.show(); win.focus(); } subtitles.enqueue(subtitleArguments(argv, workingDirectory)); });
   app.whenReady().then(async () => {
     const dataRoot = storage.root;
     try { if (!process.env.PCLAEG_TEST_ROOT) await migrateLibrary(dataRoot, legacyRoots); }
@@ -51,7 +49,7 @@ else {
     win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
     win.webContents.on('will-navigate', e => e.preventDefault());
     await win.loadFile(path.join(__dirname, 'index.html'));
-    const files = pendingSubtitleFiles; pendingSubtitleFiles = []; await openSubtitles(files);
+    await subtitles.start(manager);
     if (!process.env.PCLAEG_TEST_ROOT && manager.state.preferences.autoScan) manager.scanLocalVersions().catch(() => {});
   });
 }
@@ -133,12 +131,12 @@ ipcMain.handle('command', async (event, command, args = {}) => {
         case 'importDetected': return manager.importLocalCandidate(args.token, args.name);
         case 'releaseSourceAdd': return manager.addReleaseSource(args.url);
         case 'releaseSourceRemove': return manager.removeReleaseSource(args.source);
+        case 'assStatus': return readAssociationStatus(associationExecutable(), associationPrefix());
         case 'assRegister': {
-          const executable = process.env.PORTABLE_EXECUTABLE_FILE || app.getPath('exe');
-          await registerAssociation(executable, app.isPackaged ? [] : [path.join(__dirname, '..')]);
-          await shell.openExternal('ms-settings:defaultapps'); return { registered: true };
+          await registerAssociation(associationExecutable(), associationPrefix());
+          await openDefaultSettings(url => shell.openExternal(url)); return { registered: true };
         }
-        case 'assSettings': await shell.openExternal('ms-settings:defaultapps'); return null;
+        case 'assSettings': await openDefaultSettings(url => shell.openExternal(url), !!args.general); return null;
         case 'rename': return manager.rename(args.id, args.name);
         case 'clone': return manager.clone(args.id, args.name);
         case 'changeExecutable': return manager.changeExecutable(args.id);
@@ -147,7 +145,9 @@ ipcMain.handle('command', async (event, command, args = {}) => {
           manager.ensureStopped(args.id);
           const v = manager.instance(args.id);
           const result = await dialog.showMessageBox(win, { type: 'warning', buttons: ['取消', '删除版本'], defaultId: 0, cancelId: 0, message: `彻底删除版本「${v.name}」？`, detail: '将删除此版本的全部程序、配置、插件、备份和自动保存文件，释放磁盘空间。此操作无法恢复。其他版本不受影响。' });
-          return result.response === 1 ? manager.remove(args.id) : null;
+          if (result.response !== 1) return null;
+          const defaultAssReset = manager.state.preferences.defaultAss === args.id;
+          return { ...await manager.remove(args.id), defaultAssReset };
         }
         case 'pluginInstall': return manager.addPlugin(args.id, args);
         case 'pluginFeedAdd': return manager.addPluginFeed(args.url, args.type || 'auto');
@@ -160,7 +160,10 @@ ipcMain.handle('command', async (event, command, args = {}) => {
           if (result.canceled) return null;
           manager.progress({ label: '正在迁移版本与插件，旧目录将保留…', percent: null });
           const changed = await relocateLibrary(manager.root, result.filePaths[0], storage.configFile);
-          if (changed) setTimeout(() => { app.relaunch({ execPath: process.env.PORTABLE_EXECUTABLE_FILE || app.getPath('exe') }); app.quit(); }, 700);
+          if (changed) {
+            subtitles.pause();
+            setTimeout(() => { app.relaunch({ execPath: associationExecutable(), args: [...process.argv.slice(1).filter(arg => !/\.(ass|ssa)$/i.test(arg)), ...subtitles.pendingFiles()] }); app.quit(); }, 700);
+          }
           return changed ? { relocated: true } : null;
         }
         case 'pluginImport': {
@@ -184,7 +187,7 @@ ipcMain.handle('command', async (event, command, args = {}) => {
         default: throw new Error('未知操作');
       }
     };
-    const readOnly = ['state', 'updateCheck', 'cancel', 'cancelImport', 'releases', 'folder', 'external', 'scanLocal', 'dependencyGraph', 'syncPreview', 'dependencyPlan'].includes(command);
+    const readOnly = ['state', 'assStatus', 'updateCheck', 'cancel', 'cancelImport', 'releases', 'folder', 'external', 'scanLocal', 'dependencyGraph', 'syncPreview', 'dependencyPlan'].includes(command);
     return { ok: true, data: await (readOnly ? run() : manager.mutate(run)) };
   } catch (e) { return e.code === 'EXECUTABLE_SELECTION_CANCELLED' ? { ok: true, data: null } : { ok: false, error: e.message }; }
 });

@@ -30,6 +30,8 @@ jobs:
         run: node tests/package-smoke.cjs
       - name: Verify executable picker
         run: node tests/executable-selection-ui-smoke.cjs
+      - name: Verify subtitle defaults
+        run: node tests/ass-default-ui-smoke.cjs
       - name: Verify update UI and dark theme
         run: node tests/updater-ui-smoke.cjs
       - run: npm run package:zip
