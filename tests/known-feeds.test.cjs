@@ -35,6 +35,7 @@ test('DependencyControl module-only sources retain knownFeeds for mutual discove
 test('legacy JSONC feeds with trailing commas and native module helpers remain discoverable', async () => {
   const text = '{ // legacy feed\n"dependencyControlFeedFormatVersion":"0.2.0","knownFeeds":{"b":"' + url('b') + '",},"modules":{"native.Helper":{"channels":{"main":{"default":true,"files":[{"name":".exe","url":"https://example.com/helper.exe"}],},},},},}';
   const parsed = await loadSource(url('a'), 'auto', async () => text);
+  assert.equal(parsed.packages[0].main, 'native/Helper.exe');
   assert.equal(parsed.moduleCount, 1); assert.equal(parsed.knownFeeds[0].url, url('b'));
 });
 test('recursive discovery handles cycles and diamonds, records parent provenance and leaves subscriptions unchanged', async t => {

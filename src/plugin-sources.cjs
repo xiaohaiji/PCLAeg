@@ -125,7 +125,7 @@ async function loadSource(input, type, read) {
     }
   }
   const knownFeeds = normalizeKnownFeeds(feed.knownFeeds, feed.manifestUrl || url);
-  if (!feed.packages.length && !feed.moduleCount && !knownFeeds.length) throw new Error('这个源没有插件脚本、依赖模块或关联源');
+  if (!feed.packages.length && !feed.moduleCount && !knownFeeds.length) throw new Error(feed.diagnostics?.length ? `源中没有可用的包：${feed.diagnostics.map(d => `${d.namespace}：${d.message}`).join('；')}` : '这个源没有插件脚本、依赖模块或关联源');
   return { ...feed, knownFeeds, requestedType: type, packages: feed.packages.map(p => ({ ...p, sourceUrl: url, feedType: type })) };
 }
 module.exports = { loadSource, parseList, sourceUrl, scriptName, normalizeKnownFeeds };
