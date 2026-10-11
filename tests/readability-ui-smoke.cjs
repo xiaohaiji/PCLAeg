@@ -11,6 +11,7 @@ const { Manager } = require('../src/core.cjs');
     await manager.create({ name, version: '3.4.2', populate: dest => fs.writeFile(path.join(dest, 'aegisub.exe'), 'fixture') });
   }
   await manager.addPlugin(manager.state.selected, { catalogId: manager.catalog().find(p => p.file === 'a-mo.Aegisub-Motion.moon').id });
+  await manager.addFavorite({ catalogId: manager.catalog().find(p => p.file === 'a-mo.Aegisub-Motion.moon').id });
   const config = path.resolve('dist/win-unpacked/launcher-paths.json');
   let old; try { old = await fs.readFile(config); } catch {}
   await fs.writeFile(config, JSON.stringify({ dataRoot: root }));
@@ -68,6 +69,9 @@ const { Manager } = require('../src/core.cjs');
           await audit(`${width}/${theme}/${section}`);
           if (width === 1240 || section === 'versions') await page.screenshot({ path: path.resolve(`dist/screenshots/readability-${width}-${theme}-${section}.png`) });
         }
+        await page.locator('[data-page=plugins]').click();
+        await page.locator('[data-action=plugin-tab][data-tab=favorites]').click();
+        await audit(`${width}/${theme}/favorites`);
         await page.locator('[data-page=plugins]').click();
         await page.getByRole('button', { name: '管理源', exact: true }).click();
         await audit(`${width}/${theme}/pluginSources`);

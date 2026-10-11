@@ -125,6 +125,11 @@ dialog label{font-size:14px;font-weight:600}
 [data-theme=dark] .notice strong{color:#d2e4ff}
 [data-theme=dark] .danger{color:var(--danger)}
 [data-theme=dark] button:disabled{color:var(--disabled-text);background:var(--control)}
+.favorite-row{margin:0 0 14px}
+.favorite-button.saved{color:var(--link);background:var(--control);border-color:var(--border)}
+.favorite-summary{padding:20px;margin:0 0 20px;display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap}
+.favorite-summary h3{font-size:16px;font-weight:600;line-height:1.5;margin:0 0 6px}
+.favorite-summary p{font-size:14px;color:var(--muted);line-height:1.8;margin:0}
 @media(max-width:1100px){
   .topbar{gap:20px}
   nav button{padding:12px}

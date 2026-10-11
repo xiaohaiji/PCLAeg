@@ -17,7 +17,7 @@ function extend(Manager, { inside, exists, writeJSON }) {
   const init = Manager.prototype.init;
   Manager.prototype.init = async function() {
     await init.call(this);
-    this.state.preferences = { theme: 'system', autoScan: true, defaultAss: null, ...this.state.preferences };
+    this.state.preferences = { theme: 'system', autoScan: true, defaultAss: null, closeBehavior: 'background', ...this.state.preferences };
     this.state.restorePoints ||= [];
     const backupRoot = path.join(this.root, 'cache/restore-points');
     if (await exists(backupRoot)) for (const ent of await fs.readdir(backupRoot, { withFileTypes: true })) {
@@ -35,7 +35,7 @@ function extend(Manager, { inside, exists, writeJSON }) {
     await this.save(); return this.snapshot();
   };
   Manager.prototype.setPreference = async function(key, value) {
-    if (key === 'theme' && !['system', 'light', 'dark'].includes(value) || key === 'autoScan' && typeof value !== 'boolean' || !['theme', 'autoScan', 'defaultAss'].includes(key)) throw new Error('设置值无效');
+    if (key === 'theme' && !['system', 'light', 'dark'].includes(value) || key === 'autoScan' && typeof value !== 'boolean' || key === 'closeBehavior' && !['background', 'quit'].includes(value) || !['theme', 'autoScan', 'defaultAss', 'closeBehavior'].includes(key)) throw new Error('设置值无效');
     if (key === 'defaultAss' && value !== null) this.instance(value);
     this.state.preferences[key] = value; await this.save(); return this.snapshot();
   };

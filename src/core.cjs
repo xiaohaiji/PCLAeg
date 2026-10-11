@@ -728,4 +728,5 @@ class Manager {
 require('./profiles.cjs').extend(Manager, { inside, exists, writeJSON });
 require('./dependencies.cjs').extend(Manager, { inside, exists, writeJSON, download, BUNDLED_ROOT });
 require('./platform.cjs').extend(Manager, { inside, exists, writeJSON, executableVersion });
+require('./favorites.cjs').extend(Manager);
 module.exports = { Manager, CATALOG, SOURCES, inside, safeEntry, extractZip, download, findExecutables, executableVersion };

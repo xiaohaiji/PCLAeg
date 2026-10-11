@@ -3,6 +3,9 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const semver = require('semver');
 const AdmZip = require('adm-zip');
+// Electron's patched fs treats .asar paths as virtual directories. Update
+// archives contain a new physical app.asar, so extraction must bypass that layer.
+const archiveFs = process.versions.electron ? require('original-fs') : require('node:fs');
 const { safeEntry, download } = require('./core.cjs');
 const REPO = 'xiaohaiji/PCLAeg';
 const RUNTIME = new Set(['Aegisub Launcher.exe','locales','resources','docs','README.md','LICENSE','THIRD_PARTY_NOTICES.md','CHANGELOG.md','LICENSE.electron.txt','LICENSES.chromium.html','chrome_100_percent.pak','chrome_200_percent.pak','d3dcompiler_47.dll','dxcompiler.dll','dxil.dll','ffmpeg.dll','icudtl.dat','resources.pak','snapshot_blob.bin','v8_context_snapshot.bin','vk_swiftshader_icd.json','vk_swiftshader.dll','vulkan-1.dll']);
@@ -24,7 +27,7 @@ function selectRelease(release, current) {
   return { version, available: semver.gt(version, current), name, url: assetUrl(asset.browser_download_url), digest, checksumUrl: checksum ? assetUrl(checksum.browser_download_url) : null, notes: String(release.body || '').slice(0, 6000), page: `https://github.com/${REPO}/releases/tag/v${version}` };
 }
 async function stageArchive(file, stage, version) {
-  const zip = new AdmZip(file), entries = zip.getEntries();
+  const zip = new AdmZip(file, { fs: archiveFs }), entries = zip.getEntries();
   if (entries.length > 10000) throw new Error('更新包文件数量异常');
   let total = 0;
   const seen = new Set();

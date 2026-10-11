@@ -40,9 +40,13 @@ jobs:
         run: node tests/updater-ui-smoke.cjs
       - name: Verify readable text and window layouts
         run: node tests/readability-ui-smoke.cjs
+      - name: Verify favorites and background close behavior
+        run: node tests/favorites-background-ui-smoke.cjs
       - name: Verify DependencyControl diagnostics
         run: node tests/depctrl-diagnostics-ui-smoke.cjs
       - run: npm run package:zip
+      - name: Verify real update archive extraction in packaged Electron
+        run: node tests/updater-archive-ui-smoke.cjs
       - uses: actions/upload-artifact@v4
         with:
           name: windows-x64

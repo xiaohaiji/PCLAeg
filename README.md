@@ -6,7 +6,7 @@
 
 ## 下载与使用
 
-**[下载 Windows x64 便携版 0.2.2](https://github.com/xiaohaiji/PCLAeg/releases/download/v0.2.2/Aegisub-Launcher-0.2.2-Windows-x64.zip)** · [全部发布版本](https://github.com/xiaohaiji/PCLAeg/releases)
+**[下载 Windows x64 便携版 0.2.3](https://github.com/xiaohaiji/PCLAeg/releases/download/v0.2.3/Aegisub-Launcher-0.2.3-Windows-x64.zip)** · [全部发布版本](https://github.com/xiaohaiji/PCLAeg/releases)
 
 1. 解压 ZIP 到有写入权限的文件夹，运行 `AegisubLauncher/Aegisub Launcher.exe`，无需安装 Node.js。
 2. 在“下载”中安装 Aegisub，或在“版本管理”中导入完整便携目录 / ZIP。也能扫描本机安装，选择后复制为独立实例。
@@ -23,6 +23,8 @@
 - **依赖管理**：解析 DC 默认频道、文件与哈希、版本范围、间接依赖和模块别名；安装前预览、依赖关系图、缺失和重复模块检查；阻止移除其他插件仍在使用的模块。
 - **跨实例同步**：选择配置、快捷键与插件，预览差异及冲突处理方式。失败自动回滚，也可从“设置”的恢复点手动恢复。
 - **外观与系统集成**：浅色 / 深色 / 跟随系统；选择默认打开 ASS / SSA 的实例，并注册 Windows 文件关联。
+- **后台与托盘**：默认关闭窗口后静默驻留后台，下载和实例进程跟踪继续；点击托盘打开窗口，右键可完全退出。“设置 → 关闭窗口时”可切换为关闭即退出。
+- **插件收藏夹**：在发现插件或已安装列表收藏常用插件，跨实例、重启保留。可单独安装或一键安装全部收藏到当前实例，已有插件跳过并保留禁用状态，失败整批回滚。在线来源会临时读取，不会重新订阅已移除的源；本地收藏需要保留来源实例。
 
 ![深色模式下的插件依赖视图（演示数据）](docs/images/dependencies-dark.png)
 
@@ -39,6 +41,8 @@
 “启动文件”操作在无法自动识别时也可手动选择，文件必须与当前主程序位于同一目录，以保持配置和插件目录一致。
 
 ### 如何升级？
+
+0.2.1 / 0.2.2 的一键更新存在 `app.asar` 解压错误，可能显示 `chmod ENOENT`。请关闭启动器（驻留后台时从托盘完全退出）和 Aegisub，手动解压 0.2.3 完整包覆盖程序文件一次，保留 `versions/`、`cache/`、`state.json` 与 `launcher-paths.json`。0.2.3 已修复该问题，后续可正常使用一键更新。解压失败发生在旧程序替换之前。
 
 从 0.2.1 开始，可在“设置 → 检查更新”后点击“一键更新”。更新使用官方稳定版 ZIP，验证 SHA-256 和文件清单，退出后只替换启动器程序并自动重启，保留实例、配置、插件与数据目录设置。替换失败自动恢复旧程序，旧程序备份和结果记录在 `cache/launcher-updates/`。请先关闭正在运行的 Aegisub。仅支持 Windows x64 目录版；开发模式与自解压单文件版请手动升级。
 

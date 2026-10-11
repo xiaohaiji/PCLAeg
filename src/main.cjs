@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, shell, net, nativeTheme } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, net, nativeTheme, Tray, Menu } = require('electron');
 const path = require('node:path');
 const { randomUUID } = require('node:crypto');
 const { Manager } = require('./core.cjs');
@@ -6,7 +6,8 @@ const { resolveStorage, configureStorage, migrateLibrary, relocateLibrary } = re
 const { registerAssociation } = require('./platform.cjs');
 const { Updater } = require('./updater.cjs');
 const { readAssociationStatus, openDefaultSettings, subtitleArguments, SubtitleQueue } = require('./ass-integration.cjs');
-let win, manager, updater, pendingImport;
+const { BackgroundController } = require('./background.cjs');
+let win, manager, updater, pendingImport, background;
 const subtitles = new SubtitleQueue(error => dialog.showErrorBox('字幕打开失败', error.message));
 subtitles.enqueue(subtitleArguments(process.argv));
 const associationExecutable = () => process.env.PORTABLE_EXECUTABLE_FILE || app.getPath('exe');
@@ -24,7 +25,7 @@ const gotLock = app.requestSingleInstanceLock();
 app.setName('aegisub-launcher');
 if (!gotLock) app.quit();
 else {
-  app.on('second-instance', (_event, argv, workingDirectory) => { if (win) { if (win.isMinimized()) win.restore(); win.show(); win.focus(); } subtitles.enqueue(subtitleArguments(argv, workingDirectory)); });
+  app.on('second-instance', (_event, argv, workingDirectory) => { if (background) background.show(); else if (win) { if (win.isMinimized()) win.restore(); win.show(); win.focus(); } subtitles.enqueue(subtitleArguments(argv, workingDirectory)); });
   app.whenReady().then(async () => {
     const dataRoot = storage.root;
     try { if (!process.env.PCLAEG_TEST_ROOT) await migrateLibrary(dataRoot, legacyRoots); }
@@ -46,6 +47,7 @@ else {
     try { await manager.init(); } catch (e) { dialog.showErrorBox('数据读取失败', e.message); app.quit(); return; }
     nativeTheme.themeSource = manager.state.preferences.theme;
     win = new BrowserWindow({ width: 1240, height: 820, minWidth: 1000, minHeight: 680, icon: path.join(__dirname, 'assets', 'icon.png'), backgroundColor: '#f3f6fa', title: 'Aegisub Launcher', autoHideMenuBar: true, webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true } });
+    background = new BackgroundController({ app, win, Tray, Menu, icon: path.join(__dirname, 'assets', 'icon.ico'), getBehavior: () => manager.state.preferences.closeBehavior });
     win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
     win.webContents.on('will-navigate', e => e.preventDefault());
     await win.loadFile(path.join(__dirname, 'index.html'));
@@ -152,6 +154,9 @@ ipcMain.handle('command', async (event, command, args = {}) => {
         }
         case 'pluginInstall': return manager.addPlugin(args.id, args);
         case 'pluginUpdate': return manager.updatePlugin(args.id, args.pluginId);
+        case 'favoriteAdd': return manager.addFavorite(args);
+        case 'favoriteRemove': return manager.removeFavorite(args.favoriteId);
+        case 'favoriteInstall': return manager.installFavorites(args.id, args.favoriteIds);
         case 'pluginFeedAdd': return manager.addPluginFeed(args.url, args.type || 'auto');
         case 'pluginFeedRemove': return manager.removePluginFeed(args.url);
         case 'pluginFeedDiscover': return manager.discoverPluginFeeds();
