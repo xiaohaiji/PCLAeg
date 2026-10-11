@@ -1,0 +1,187 @@
+{
+  "$schema": "https://raw.githubusercontent.com/TypesettingTools/DependencyControl/publish/schemas/feed/v0.4.0.json",
+  "dependencyControlFeedFormatVersion": "0.4.0",
+  "name": "WenHe 的 Aegisub 脚本",
+  "description": "WenHe 维护的 Aegisub 自动化脚本源。",
+  "maintainer": "WenHe",
+  "baseUrl": "https://github.com/WenHe233/WenHe-Aegisub-Scripts",
+  "url": "@{baseUrl}",
+  "fileBaseUrl": "https://raw.githubusercontent.com/WenHe233/WenHe-Aegisub-Scripts/@{namespace}-v@{version}/macros/@{namespace}",
+  "localFileBasePath": "./macros/@{namespace}",
+  "macros": {
+    "wenhe.ApplyMove": {
+      "url": "@{baseUrl}/blob/main/macros/@{namespace}.lua",
+      "author": "WenHe",
+      "name": "套用平移 (\\move)",
+      "description": "把参考行的 \\move 位移(方向/距离)与时间套用到其它选中行",
+      "channels": {
+        "stable": {
+          "version": "1.0.0",
+          "released": "2026-08-06",
+          "default": true,
+          "files": [
+            {
+              "name": ".lua",
+              "url": "@{fileBaseUrl}@{fileName}",
+              "sha1": "692613bab0553850cbbff400662a8608dcd0a9fe"
+            }
+          ]
+        }
+      },
+      "changelog": {
+        "1.0.0": [
+          "发布 1.0.0"
+        ]
+      }
+    },
+    "wenhe.TextFadeInOut": {
+      "url": "@{baseUrl}/blob/main/macros/@{namespace}.lua",
+      "author": "WenHe",
+      "name": "文字渐入渐出",
+      "description": "用分层 clip 生成带柔和边缘的文字渐入 / 渐出效果",
+      "channels": {
+        "stable": {
+          "version": "2.1.0",
+          "released": "2026-08-06",
+          "default": true,
+          "files": [
+            {
+              "name": ".lua",
+              "url": "@{fileBaseUrl}@{fileName}",
+              "sha1": "ccad30621646ecdc4ff2d678f1008e247ed0d142"
+            }
+          ]
+        }
+      },
+      "changelog": {
+        "2.1.0": [
+          "发布 2.1.0"
+        ]
+      }
+    },
+    "wenhe.CopySelectedText": {
+      "url": "@{baseUrl}/blob/main/macros/@{namespace}.lua",
+      "author": "WenHe",
+      "name": "复制选中行正文",
+      "description": "将选中行的纯文本正文或原始 Text 字段复制到剪贴板",
+      "channels": {
+        "stable": {
+          "version": "1.0.0",
+          "released": "2026-08-14",
+          "default": true,
+          "files": [
+            {
+              "name": ".lua",
+              "url": "@{fileBaseUrl}@{fileName}",
+              "sha1": "731f270e2db48503c6c51aae618d09ca8c22f738"
+            }
+          ]
+        }
+      },
+      "changelog": {
+        "1.0.0": [
+          "feat: 新增复制选中行正文脚本"
+        ]
+      }
+    },
+    "wenhe.ASSTracker": {
+      "url": "@{baseUrl}/blob/main/macros/@{namespace}.lua",
+      "author": "WenHe",
+      "name": "ASS 追踪",
+      "description": "五项联动平面追踪，支持裁切、绘图和缩放外观，自动回填字幕并保留原行。",
+      "channels": {
+        "stable": {
+          "version": "0.6.1",
+          "released": "2026-09-26",
+          "default": true,
+          "files": [
+            {
+              "name": ".lua",
+              "url": "@{fileBaseUrl}@{fileName}",
+              "sha1": "b19fdbc441630e2e44489119ccea6b71d4741f10"
+            }
+          ],
+          "requiredModules": [
+            {
+              "moduleName": "wenhe.ASSTracker",
+              "version": "0.6.1",
+              "feed": "https://raw.githubusercontent.com/WenHe233/WenHe-Aegisub-Scripts/main/DependencyControl.json"
+            }
+          ],
+          "platforms": [
+            "Windows-x64",
+            "Windows-x86"
+          ]
+        }
+      },
+      "changelog": {
+        "0.4.0": [
+          "发布 0.4.0"
+        ],
+        "0.4.1": [
+          "fix: 发布追踪 0.4.1，等待图形程序退出后再回填"
+        ],
+        "0.5.0": [
+          "feat(tracker): responsive window and editable polygon regions in 0.5.0"
+        ],
+        "0.6.0": [
+          "feat(tracker): runtime download prompt with location and mirror choice in 0.6.0"
+        ],
+        "0.6.1": [
+          "feat(tracker): support \\fay, \\r and fades in 0.6.1"
+        ]
+      }
+    }
+  },
+  "modules": {
+    "wenhe.ASSTracker": {
+      "name": "ASS 追踪联动组件",
+      "author": "WenHe",
+      "description": "JSON、Windows 进程与配套运行包管理",
+      "url": "https://github.com/WenHe233/WenHe-Aegisub-Scripts",
+      "channels": {
+        "stable": {
+          "version": "0.6.1",
+          "released": "2026-09-26",
+          "default": true,
+          "files": [
+            {
+              "name": ".lua",
+              "url": "https://raw.githubusercontent.com/WenHe233/WenHe-Aegisub-Scripts/wenhe.ASSTracker-v0.6.1/modules/wenhe/ASSTracker.lua",
+              "localFilePath": "./modules/wenhe/ASSTracker.lua",
+              "sha1": "e447b6b935ff7d848db2113ad148accc416af07d"
+            },
+            {
+              "name": "/VERSION",
+              "url": "https://raw.githubusercontent.com/WenHe233/WenHe-Aegisub-Scripts/wenhe.ASSTracker-v0.6.1/apps/ass-tracker/ass_tracker/VERSION",
+              "localFilePath": "./apps/ass-tracker/ass_tracker/VERSION",
+              "sha1": "cacb34dfb036af3f6d2e621cf92befcd4aa72c07"
+            },
+            {
+              "name": "/bootstrap.ps1",
+              "url": "https://raw.githubusercontent.com/WenHe233/WenHe-Aegisub-Scripts/wenhe.ASSTracker-v0.6.1/modules/wenhe/ASSTracker/bootstrap.ps1",
+              "localFilePath": "./modules/wenhe/ASSTracker/bootstrap.ps1",
+              "sha1": "ac5b4f31d4e267bece0a948f3558becc7578a57b"
+            },
+            {
+              "name": "/bridge.lua",
+              "url": "https://raw.githubusercontent.com/WenHe233/WenHe-Aegisub-Scripts/wenhe.ASSTracker-v0.6.1/modules/wenhe/ASSTracker/bridge.lua",
+              "localFilePath": "./modules/wenhe/ASSTracker/bridge.lua",
+              "sha1": "b4a9bd2ff70bb8e90eeb866c4ced7a10c2565082"
+            },
+            {
+              "name": "/json.lua",
+              "url": "https://raw.githubusercontent.com/WenHe233/WenHe-Aegisub-Scripts/wenhe.ASSTracker-v0.6.1/modules/wenhe/ASSTracker/json.lua",
+              "localFilePath": "./modules/wenhe/ASSTracker/json.lua",
+              "sha1": "916956dc5311deadd022022697362979f2b853c2"
+            }
+          ],
+          "platforms": [
+            "Windows-x64",
+            "Windows-x86"
+          ]
+        }
+      }
+    }
+  }
+}

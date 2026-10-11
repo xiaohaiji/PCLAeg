@@ -55,14 +55,14 @@ test('legacy feeds inherit scalar base URLs and support module namespace paths',
   assert.equal(p.files[0].url, 'https://example.com/main/test/Module.moon');
 });
 test('DependencyControl rejects traversal, unexpanded URLs and invalid hashes', () => {
-  for (const name of ['/../bad.lua', '/../outside.lua', '/NUL.lua', '/bad.exe', '/a\\bad.lua']) {
+  for (const name of ['/../bad.lua', '/../outside.lua', '/NUL.lua', '/bad:stream', '/a\\bad.lua']) {
     const data = feed(); data.macros['test.Plugin'].channels.stable.files[0].name = name;
-    assert.throws(() => parseFeed(data, url));
+    assert.equal(parseFeed(data, url).packages.length, 0); assert.equal(parseFeed(data, url).diagnostics.length, 1);
   }
   const missing = feed(); missing.macros['test.Plugin'].channels.stable.files[0].url = 'https://example.com/@{missing}';
-  assert.throws(() => parseFeed(missing, url), /无法识别/);
+  assert.match(parseFeed(missing, url).diagnostics[0].message, /无法识别/);
   const invalid = feed(); invalid.macros['test.Plugin'].channels.stable.files[0].sha1 = 'invalid';
-  assert.throws(() => parseFeed(invalid, url), /SHA-1/);
+  assert.match(parseFeed(invalid, url).diagnostics[0].message, /SHA-1/);
   assert.throws(() => parseFeed(feed(), 'http://example.com/feed'), /HTTPS/);
 });
 test('clean library exposes 64 plugins and installs a feed package with runtime, config and companion files', async t => {

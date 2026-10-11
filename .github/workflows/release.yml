@@ -32,6 +32,8 @@ jobs:
         run: node tests/executable-selection-ui-smoke.cjs
       - name: Verify update UI and dark theme
         run: node tests/updater-ui-smoke.cjs
+      - name: Verify DependencyControl diagnostics
+        run: node tests/depctrl-diagnostics-ui-smoke.cjs
       - run: npm run package:zip
       - uses: actions/upload-artifact@v4
         with:
