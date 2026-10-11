@@ -260,11 +260,14 @@ class Manager {
     return this.snapshot();
   }
   ensureStopped(id) { if (this.running.has(id)) throw new Error('请先关闭该实例的 Aegisub，再修改配置或插件'); }
-  async mutate(fn) {
-    if (this.busy) throw new Error('已有任务正在进行，请稍后再试');
+  async mutate(fn, { wait = false } = {}) {
+    while (this.busy) {
+      if (!wait) throw new Error('已有任务正在进行，请稍后再试');
+      await new Promise(resolve => (this.idleWaiters ||= []).push(resolve));
+    }
     this.busy = true;
     this.abort = new AbortController();
-    try { return await fn(); } finally { this.busy = false; this.abort = null; }
+    try { return await fn(); } finally { this.busy = false; this.abort = null; for (const resolve of this.idleWaiters?.splice(0) || []) resolve(); }
   }
   async portable(exe) {
     const dir = path.dirname(exe), configFile = path.join(dir, 'config.json');
