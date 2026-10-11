@@ -38,6 +38,8 @@ jobs:
         run: node tests/ass-default-ui-smoke.cjs
       - name: Verify update UI and dark theme
         run: node tests/updater-ui-smoke.cjs
+      - name: Verify readable text and window layouts
+        run: node tests/readability-ui-smoke.cjs
       - name: Verify DependencyControl diagnostics
         run: node tests/depctrl-diagnostics-ui-smoke.cjs
       - run: npm run package:zip

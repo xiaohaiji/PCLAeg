@@ -6,7 +6,7 @@
 
 ## 下载与使用
 
-**[下载 Windows x64 便携版 0.2.1](https://github.com/xiaohaiji/PCLAeg/releases/download/v0.2.1/Aegisub-Launcher-0.2.1-Windows-x64.zip)** · [全部发布版本](https://github.com/xiaohaiji/PCLAeg/releases)
+**[下载 Windows x64 便携版 0.2.2](https://github.com/xiaohaiji/PCLAeg/releases/download/v0.2.2/Aegisub-Launcher-0.2.2-Windows-x64.zip)** · [全部发布版本](https://github.com/xiaohaiji/PCLAeg/releases)
 
 1. 解压 ZIP 到有写入权限的文件夹，运行 `AegisubLauncher/Aegisub Launcher.exe`，无需安装 Node.js。
 2. 在“下载”中安装 Aegisub，或在“版本管理”中导入完整便携目录 / ZIP。也能扫描本机安装，选择后复制为独立实例。
@@ -80,7 +80,7 @@ npm.cmd run package:zip
 
 技术栈：Electron + HTML / CSS / JavaScript。文件操作在主进程执行，渲染进程使用隔离的 preload 接口。
 
-GitHub Actions 在推送主分支或提交 PR 时运行测试、构建与打包验证。发布时更新 `package.json`、`package-lock.json` 和 CHANGELOG，提交后推送对应 `v版本号` 标签（例如 `v0.2.1`），工作流自动生成 ZIP 和校验文件，全部上传完成后公开发布。标签必须与包版本一致。无需手动上传下载包。
+GitHub Actions 在推送主分支或提交 PR 时运行测试、构建与打包验证。发布时更新 `package.json`、`package-lock.json` 和 CHANGELOG，提交后推送对应 `v版本号` 标签（例如 `v0.2.2`），工作流自动生成 ZIP 和校验文件，全部上传完成后公开发布。标签必须与包版本一致。无需手动上传下载包。
 
 单元测试覆盖版本识别、存储隔离、插件源、DC 解析、依赖与同步回滚。`tests/` 另有打包 UI 和网络测试，建立独立测试目录；网络测试可能下载、启动测试用 Aegisub。
 

@@ -23,7 +23,7 @@ async function task(fn) {
   try { await fn(); } catch (e) { try { await command('state'); } catch {} toast(e.message, true); }
   finally { busy = false; $('#task').classList.add('hidden'); render(); }
 }
-function heading(title, sub, actions = '') { return `<div class="page-heading"><div><h1>${title}</h1></div><div class="right">${actions}</div></div>`; }
+function heading(title, sub, actions = '') { return `<div class="page-heading"><div><h1>${esc(title)}</h1>${sub ? `<p>${esc(sub)}</p>` : ''}</div><div class="right">${actions}</div></div>`; }
 function empty(title, text, actions = '') { return `<div class="card empty"><div class="empty-symbol">◇</div><h3>${title}</h3><p>${text}</p>${actions}</div>`; }
 function versionRow(v, compact = false) {
   const selected = state.selected === v.id, running = state.running.includes(v.id);
@@ -100,7 +100,7 @@ function settingsPage() {
   const defaultTarget = state.instances.find(v => v.id === (prefs.defaultAss || state.selected));
   const choices = '<option value="">跟随当前选择的实例</option>' + state.instances.map(v => `<option value="${v.id}" ${prefs.defaultAss === v.id ? 'selected' : ''}>${esc(v.name)}</option>`).join('');
   return heading('设置', '', btn('跨实例同步', 'profile-sync', '', 'button')) +
-    `<div class="card"><div class="settings-row"><div><h3>启动器更新 · ${esc(state.launcherVersion || '0.2.1')}</h3><p>${launcherUpdate ? (launcherUpdate.available ? `发现新版 ${esc(launcherUpdate.version)}，更新后自动重启，保留实例与插件。` : '当前已经是最新稳定版。') : '从官方 GitHub 发布页检查稳定更新。'}${state.updateSupported === false ? '<br>开发模式或单文件版请手动下载目录 ZIP。' : ''}${state.updateResult ? `<br>上次更新：${esc(state.updateResult.version)} · ${{installed:'已完成', 'rolled-back':'失败后已恢复旧程序','restore-failed':'恢复失败，请从缓存中的程序备份恢复'}[state.updateResult.status]}${state.updateResult.error ? '<br>' + esc(state.updateResult.error) : ''}` : ''}</p></div><div class="row-actions">${btn('检查更新','launcher-update-check')}${launcherUpdate?.available ? btn('一键更新','launcher-update-install',state.updateSupported === false ? 'disabled' : '', 'primary') : ''}${btn('发布说明','external','data-url="https://github.com/xiaohaiji/PCLAeg/releases"')}</div></div></div>` +
+    `<div class="card"><div class="settings-row"><div><h3>启动器更新 · ${esc(state.launcherVersion || '0.2.2')}</h3><p>${launcherUpdate ? (launcherUpdate.available ? `发现新版 ${esc(launcherUpdate.version)}，更新后自动重启，保留实例与插件。` : '当前已经是最新稳定版。') : '从官方 GitHub 发布页检查稳定更新。'}${state.updateSupported === false ? '<br>开发模式或单文件版请手动下载目录 ZIP。' : ''}${state.updateResult ? `<br>上次更新：${esc(state.updateResult.version)} · ${{installed:'已完成', 'rolled-back':'失败后已恢复旧程序','restore-failed':'恢复失败，请从缓存中的程序备份恢复'}[state.updateResult.status]}${state.updateResult.error ? '<br>' + esc(state.updateResult.error) : ''}` : ''}</p></div><div class="row-actions">${btn('检查更新','launcher-update-check')}${launcherUpdate?.available ? btn('一键更新','launcher-update-install',state.updateSupported === false ? 'disabled' : '', 'primary') : ''}${btn('发布说明','external','data-url="https://github.com/xiaohaiji/PCLAeg/releases"')}</div></div></div>` +
     `<div class="card"><div class="settings-row"><div><h3>外观</h3><p>浅色、深色或跟随系统。</p></div><div class="chips">${[['system','跟随系统'],['light','浅色'],['dark','深色']].map(([id,name]) => btn(name,'theme',`data-theme="${id}"`,`chip ${prefs.theme === id ? 'active' : ''}`)).join('')}</div></div>
     <div class="settings-row"><div><h3>ASS / SSA 默认打开实例</h3><p>当前目标：${esc(defaultTarget?.name || '尚未选择实例')}（${prefs.defaultAss ? '固定实例' : '跟随当前选择'}）。首次关联请注册，再在 Windows 中选择 Aegisub Launcher。<br>${assStatusText()}</p></div><div class="settings-controls"><select id="ass-instance" aria-label="ASS 默认实例">${choices}</select><div class="row-actions">${btn('注册 ASS 打开方式','ass-register')}${btn('选择默认应用','ass-settings')}${btn('打开 Windows 默认应用','ass-settings-general')}${btn('刷新关联状态','ass-status')}</div></div></div>
     <div class="settings-row"><div><h3>启动时扫描本机 Aegisub</h3><p>检测已有程序，导入前由你选择。</p></div><label><input type="checkbox" id="auto-scan" ${prefs.autoScan !== false ? 'checked' : ''}> 自动扫描</label></div>
@@ -109,7 +109,7 @@ function settingsPage() {
     <div class="settings-row"><div><h3>缓存与恢复点</h3><p>${esc(state.cacheRoot)}<br>修改插件与跨实例同步前自动备份，失败时自动回滚。保留最近 10 次修改前的配置和插件。</p></div>${btn('打开缓存','cache-folder')}</div>
     <div class="settings-row"><div><h3>删除版本</h3><p>彻底删除程序、配置、插件和该实例的备份，释放空间。</p></div><span class="settings-value">彻底删除</span></div></div>
     <div class="section-title"><h3>可回滚的修改 · ${points.length}</h3>${btn('检查恢复点','profile-check')}</div>${points.length ? `<div class="card">${points.map(p => `<div class="settings-row"><div><h3>${esc(p.label)}</h3><p>${date(p.created)} · ${p.records.map(r => esc(r.name)).join('、')} · ${p.backupError ? esc(p.backupError) : p.status === 'auto-restored' ? '错误后已自动回滚' : p.status === 'restore-failed' ? '需要手动恢复' : '可恢复修改前状态'}</p></div>${btn('回滚','profile-restore',`data-point="${p.id}" ${p.backupError ? 'disabled' : ''}`)}</div>`).join('')}</div>` : '<div class="notice">修改插件、修复依赖或同步配置后，恢复点会显示在这里。</div>'}
-    <p class="footer-note">Aegisub Launcher · PCLAeg 0.2.1 · 各实例的程序、配置、插件保持独立。</p>`;
+    <p class="footer-note">Aegisub Launcher · PCLAeg 0.2.2 · 各实例的程序、配置、插件保持独立。</p>`;
 }
 const dependencyStatus = value => ({ ready:'已满足', builtin:'内置 / 运行时提供', optional:'可选', missing:'缺失', conflict:'冲突', unknown:'版本未知' })[value] || value;
 function dependenciesPage(v) {
