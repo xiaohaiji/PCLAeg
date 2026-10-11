@@ -158,7 +158,7 @@ function extend(Manager, { inside, exists, writeJSON }) {
       await this.save();
     });
   };
-  for (const [method, label] of [['addPlugin', '安装 / 更新插件'], ['togglePlugin', '切换插件状态'], ['removePlugin', '卸载插件'], ['changeExecutable', '更换启动程序']]) {
+  for (const [method, label] of [['addPlugin', '安装 / 更新插件'], ['updatePlugin', '更新插件'], ['togglePlugin', '切换插件状态'], ['removePlugin', '卸载插件'], ['changeExecutable', '更换启动程序']]) {
     const original = Manager.prototype[method];
     Manager.prototype[method] = async function(id, ...args) { return this.profileTransaction([id], label, () => original.call(this, id, ...args)); };
   }

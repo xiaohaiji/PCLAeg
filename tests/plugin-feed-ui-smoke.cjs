@@ -84,7 +84,7 @@ const assert = require('node:assert/strict');
     await page.getByRole('button', { name: '更新', exact: true }).click();
     await page.locator('#task.hidden').waitFor({ state: 'attached', timeout: 45000 });
     const updated = await page.evaluate(async () => (await window.launcher.command('state')).data);
-    assert.equal(updated.pluginFeeds[0].type, 'github'); assert.equal(updated.pluginFeeds.length, 1);
+    assert.equal(updated.pluginFeeds.length, 0); assert.ok(updated.instances[0].plugins.find(p => p.id === genericPlugin.id));
     await page.locator('nav button[data-page="downloads"]').click();
     await page.locator('.version-row').first().waitFor({ timeout: 45000 });
     await page.screenshot({ path: path.join(__dirname, '..', 'dist/screenshots/downloads-0.1.10.png') });
