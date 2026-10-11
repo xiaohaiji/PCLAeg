@@ -50,6 +50,8 @@
 
 默认在 EXE 所在文件夹：`versions/` 保存实例，`state.json` 保存索引和设置，`cache/` 保存下载缓存和恢复点。“设置”可打开数据目录。可在 EXE 旁创建 `launcher-paths.json`，例如 `{"dataRoot":"D:/AegisubWorkspace"}`，指定其他目录。
 
+通过“设置 → 更改位置”迁移时，会同时保留恢复点，校验后才切换目录，原目录保留。恢复点缺失或损坏时会阻止回滚；可从原数据目录恢复对应的 `cache/restore-points/` 备份，再点击“检查恢复点”。新备份会校验完整文件清单，旧备份仍可使用并检查已声明路径是否存在、可读。
+
 ### ASS 默认打开为什么还要在 Windows 中选择？
 
 注册文件关联后，需要在 Windows 默认应用中选择 Aegisub Launcher。启动器不覆盖 Windows 的用户选择。打开文件会转交设置中选定的 Aegisub 实例。

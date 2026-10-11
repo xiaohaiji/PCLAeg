@@ -2,7 +2,7 @@ const fs = require('node:fs/promises');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const { parse } = require('jsonc-parser');
-const PROFILE_PATHS = ['config.json', 'hotkey.json', 'automation', 'config', 'dictionaries'];
+const { PROFILE_PATHS, backupInventory, validateRestorePoint } = require('./restore-points.cjs');
 async function tree(root, relative = '') {
   const result = [];
   let entries; try { entries = await fs.readdir(path.join(root, relative), { withFileTypes: true }); } catch (e) { if (e.code === 'ENOENT') return result; throw e; }
@@ -25,6 +25,13 @@ function extend(Manager, { inside, exists, writeJSON }) {
       try { const point = JSON.parse(await fs.readFile(inside(backupRoot, path.join(backupRoot, ent.name, 'point.json')), 'utf8')); if (point.id === ent.name && Array.isArray(point.records) && point.records.length && point.records.every(r => this.state.instances.some(v => v.id === r.instanceId))) this.state.restorePoints.push({ ...point, status: 'interrupted' }); } catch {}
     }
     this.state.restorePoints.sort((a, b) => b.created.localeCompare(a.created));
+    return this.checkRestorePoints();
+  };
+  Manager.prototype.checkRestorePoints = async function() {
+    for (const point of this.state.restorePoints) {
+      try { await validateRestorePoint(this.root, point); delete point.backupError; }
+      catch (error) { point.backupError = error.message; }
+    }
     await this.save(); return this.snapshot();
   };
   Manager.prototype.setPreference = async function(key, value) {
@@ -47,13 +54,15 @@ function extend(Manager, { inside, exists, writeJSON }) {
             await fs.cp(input, path.join(base, instanceId, relative), { recursive: stat.isDirectory() });
           }
         }
-        records.push({ instanceId, name: v.name, exe: v.exe, plugins: structuredClone(v.plugins), dependencyPackages: structuredClone(v.dependencyPackages), paths });
+        const recordRoot = path.join(base, instanceId); await fs.mkdir(recordRoot, { recursive: true });
+        records.push({ instanceId, name: v.name, exe: v.exe, plugins: structuredClone(v.plugins), dependencyPackages: structuredClone(v.dependencyPackages), paths, backupInventory: await backupInventory(recordRoot) });
       }
       const point = { id, label, created: new Date().toISOString(), records, status: 'ready' };
       await writeJSON(path.join(base, 'point.json'), point); return point;
     } catch (e) { await fs.rm(base, { recursive: true, force: true }); throw e; }
   };
   Manager.prototype.applyRestorePoint = async function(point) {
+    await validateRestorePoint(this.root, point);
     const base = inside(path.join(this.root, 'cache', 'restore-points'), path.join(this.root, 'cache', 'restore-points', point.id));
     for (const record of point.records) {
       this.ensureStopped(record.instanceId); const v = this.instance(record.instanceId), root = path.dirname(this.appDir(v));
@@ -91,6 +100,8 @@ function extend(Manager, { inside, exists, writeJSON }) {
   };
   Manager.prototype.restoreProfile = async function(pointId) {
     const point = this.state.restorePoints.find(p => p.id === pointId); if (!point) throw new Error('找不到恢复点');
+    try { await validateRestorePoint(this.root, point); delete point.backupError; }
+    catch (error) { point.backupError = error.message; await this.save(); throw error; }
     return this.profileTransaction(point.records.map(r => r.instanceId), '撤销回滚', () => this.applyRestorePoint(point));
   };
   Manager.prototype.previewSync = async function({ sourceId, targetIds, config = true, plugins = true, hotkeys = true, policy = 'keep' }) {
